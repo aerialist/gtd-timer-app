@@ -106,36 +106,39 @@ pub fn run() {
                     .and_then(|window| window.is_always_on_top().ok())
                     .unwrap_or(true);
 
-                // Create App menu with Quit item
-                let quit_item = MenuItem::with_id(
-                    handle,
-                    QUIT_MENU_ID,
-                    "Quit",
-                    true,
-                    Some("Cmd+Q"),
-                )?;
-                let app_menu = SubmenuBuilder::with_id(handle, APP_MENU_ID, "App")
-                    .item(&quit_item)
-                    .build()?;
+                #[cfg(not(target_os = "windows"))]
+                {
+                    // App menus draw on Windows even for undecorated windows.
+                    let quit_item = MenuItem::with_id(
+                        handle,
+                        QUIT_MENU_ID,
+                        "Quit",
+                        true,
+                        Some("Cmd+Q"),
+                    )?;
+                    let app_menu = SubmenuBuilder::with_id(handle, APP_MENU_ID, "App")
+                        .item(&quit_item)
+                        .build()?;
 
-                // Create View menu with Always on Top toggle
-                let toggle_item = CheckMenuItem::with_id(
-                    handle,
-                    ALWAYS_ON_TOP_MENU_ID,
-                    "Always on Top",
-                    true,
-                    is_on_top,
-                    None::<&str>,
-                )?;
-                let view_menu = SubmenuBuilder::with_id(handle, VIEW_MENU_ID, "View")
-                    .item(&toggle_item)
-                    .build()?;
+                    // Create View menu with Always on Top toggle
+                    let toggle_item = CheckMenuItem::with_id(
+                        handle,
+                        ALWAYS_ON_TOP_MENU_ID,
+                        "Always on Top",
+                        true,
+                        is_on_top,
+                        None::<&str>,
+                    )?;
+                    let view_menu = SubmenuBuilder::with_id(handle, VIEW_MENU_ID, "View")
+                        .item(&toggle_item)
+                        .build()?;
 
-                let menu = MenuBuilder::new(handle)
-                    .item(&app_menu)
-                    .item(&view_menu)
-                    .build()?;
-                app.set_menu(menu)?;
+                    let menu = MenuBuilder::new(handle)
+                        .item(&app_menu)
+                        .item(&view_menu)
+                        .build()?;
+                    app.set_menu(menu)?;
+                }
 
                 // Create system tray with context menu
                 let tray_show_item = MenuItem::with_id(
