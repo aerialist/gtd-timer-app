@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GTD Timer</title>
+    <style>
+        .drag-header {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 24px;
+            z-index: 100;
+            background: transparent;
+            pointer-events: auto;
+            user-select: none;
+            cursor: grab;
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            background: transparent;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100vw;
+            height: 100vh;
+            padding: 0;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        .timer-container {
+            background: rgba(255, 255, 255, 0.6);
+            border-radius: 20px;
+            padding: 0.5%;
+            box-shadow: none;
+            text-align: center;
+            position: relative;
+            width: 98%;
+            height: 98%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .timer-circle {
+            width: min(65vw, 65vh);
+            height: min(65vw, 65vh);
+            margin: 0 0 1vh;
+            position: relative;
+            border-radius: 50%;
+            background: rgba(248, 248, 248, 0.4);
+            overflow: hidden;
+            cursor: pointer;
+            z-index: 1;
+            -webkit-app-region: no-drag;
+        }
+
+        .timer-fill {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 68, 68, 0.8);
+            transform-origin: center;
+            transition: background 0.1s ease-out;
+            cursor: pointer;
+            pointer-events: auto;
+        }
+
+        .digital-timer {
+            background: rgba(255, 255, 255, 0.6);
+            font-size: min(8vw, 8vh);
+            font-weight: 300;
+            color: #333;
+            margin-bottom: 0;
+            font-family: 'SF Mono', 'Monaco', 'Courier New', monospace;
+            letter-spacing: 1px;
+            cursor: pointer;
+            position: relative;
+            z-index: 2;
+            padding: 0px 10px;
+            border-radius: 12px;
+            -webkit-app-region: no-drag;
+        }
+
+        .cycle-counter {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            font-size: 11px;
+            color: rgba(0, 0, 0, 0.4);
+            font-weight: 500;
+            padding: 4px 8px;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.5);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            z-index: 3;
+            -webkit-app-region: no-drag;
+        }
+
+        .cycle-counter.visible {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="drag-header"></div>
+    <div class="timer-container">
+        <div class="timer-circle" id="timerCircle">
+            <div class="timer-fill" id="timerFill"></div>
+        </div>
+
+        <div class="digital-timer" id="digitalTimer">2:00</div>
+        <div class="cycle-counter" id="cycleCounter">0 cycles</div>
+    </div>
+
+    <script>
+        let totalTime = 120; // 2 minutes in seconds
+        let remainingTime = 120000; // Track remaining time in milliseconds
+        let timerInterval = null;
+        let isRunning = false;
+        let completedCycles = 0;
+        let startTime = null;
+        let pausedTime = 120000; // Start with full time in milliseconds
+        let timerGeneration = 0; // Used to invalidate old intervals
+
+        const timerFill = document.getElementById('timerFill');
+        const digitalTimer = document.getElementById('digitalTimer');
+        const cycleCounter = document.getElementById('cycleCounter');
+
+        function updateDisplay() {
+            // Calculate current time
+            const timeInSeconds = Math.ceil(remainingTime / 1000);
+
+            // Update digital timer (shows seconds)
+            const minutes = Math.floor(timeInSeconds / 60);
+            const seconds = timeInSeconds % 60;
+            digitalTimer.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+
+            // Update circular timer (smooth animation)
+            const progress = (totalTime * 1000 - remainingTime) / (totalTime * 1000);
+
+            if (remainingTime >= totalTime * 1000) {
+                timerFill.style.background = 'rgba(255, 68, 68, 0.8)';
+            } else if (remainingTime <= 0) {
+                timerFill.style.background = 'transparent';
+            } else {
+                const progressDegrees = progress * 360;
+                timerFill.style.background = `conic-gradient(from 0deg, transparent 0deg, transparent ${progressDegrees}deg, rgba(255, 68, 68, 0.8) ${progressDegrees}deg, rgba(255, 68, 68, 0.8) 360deg)`;
+            }
+        }
+
+        function updateCycleCounter() {
+            cycleCounter.textContent = `${completedCycles} cycles`;
+            if (completedCycles > 0) {
+                cycleCounter.classList.add('visible');
+            } else {
+                cycleCounter.classList.remove('visible');
+            }
+        }
+
+        function toggleTimer() {
+            if (isRunning) {
+                stopTimer();
+            } else {
+                startTimer();
+            }
+        }
+
+        function startTimer() {
+            if (!isRunning) {
+                isRunning = true;
+                pausedTime = remainingTime; // Capture current remaining time
+                startTime = Date.now();
+                timerGeneration++; // Increment generation
+                const currentGeneration = timerGeneration;
+                
+                timerInterval = setInterval(() => {
+                    // Ignore if this interval is outdated
+                    if (currentGeneration !== timerGeneration) {
+                        return;
+                    }
+                    
+                    const elapsed = Date.now() - startTime;
+                    remainingTime = pausedTime - elapsed;
+                    
+                    if (remainingTime <= 0) {
+                        remainingTime = 0;
+                        updateDisplay();
+                        completeTimer();
+                    } else {
+                        updateDisplay();
+                    }
+                }, 50); // Update every 50ms for smooth animation
+            }
+        }
+
+        function stopTimer() {
+            if (isRunning) {
+                isRunning = false;
+                timerGeneration++; // Invalidate old interval
+                clearInterval(timerInterval);
+                timerInterval = null;
+                pausedTime = remainingTime; // Save current time for resume
+            }
+        }
+
+        function resetTimer() {
+            // Invalidate any running interval
+            timerGeneration++;
+            clearInterval(timerInterval);
+            timerInterval = null;
+            const wasRunning = isRunning;
+            isRunning = false;
+
+            // Reset all timing values
+            remainingTime = totalTime * 1000;
+            pausedTime = totalTime * 1000;
+            completedCycles = 0;
+            startTime = null;
+            updateDisplay();
+            updateCycleCounter();
+
+            // Restart if it was running
+            if (wasRunning) {
+                startTimer();
+            }
+        }
+
+        function completeTimer() {
+            completedCycles++;
+            updateCycleCounter();
+
+            // Auto-restart for next 2-minute session
+            if (isRunning) {
+                isRunning = false;
+                clearInterval(timerInterval);
+            }
+            remainingTime = totalTime * 1000;
+            pausedTime = totalTime * 1000;
+            updateDisplay();
+            startTimer();
+        }
+
+        function toggleControlsSection() {
+            const controlsSection = document.getElementById('controlsSection');
+            const toggleBtn = document.getElementById('toggleControls');
+            
+            if (controlsSection.classList.contains('expanded')) {
+                controlsSection.classList.remove('expanded');
+                controlsSection.classList.add('collapsed');
+                toggleBtn.classList.remove('expanded');
+                toggleBtn.classList.add('collapsed');
+            } else {
+                controlsSection.classList.remove('collapsed');
+                controlsSection.classList.add('expanded');
+                toggleBtn.classList.remove('collapsed');
+                toggleBtn.classList.add('expanded');
+            }
+        }
+
+        // Initialize display
+        updateDisplay();
+        updateCycleCounter();
+
+        // Click handlers
+        timerFill.addEventListener('click', (e) => {
+            e.stopPropagation();
+            toggleTimer();
+        });
+
+        // Use mousedown instead of click for digitalTimer because
+        // the frequent textContent updates interfere with click events
+        digitalTimer.addEventListener('mousedown', (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            resetTimer();
+        });
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                toggleTimer();
+            } else if (e.code === 'KeyR') {
+                e.preventDefault();
+                resetTimer();
+            }
+        });
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            updateDisplay();
+        });
+
+        // Handle window dragging via Tauri API
+        const dragHeader = document.querySelector('.drag-header');
+        dragHeader.addEventListener('mousedown', async (e) => {
+            if (e.button === 0) { // Left mouse button only
+                await window.__TAURI__.window.getCurrentWindow().startDragging();
+            }
+        });
+
+    </script>
+</body>
+</html>

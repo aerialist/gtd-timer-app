@@ -1,0 +1,43 @@
+
+{
+  "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
+  "productName": "gtd-timer-app",
+  "version": "0.1.0",
+  "identifier": "com.gtdtimer.app",
+  "build": {
+    "frontendDist": "../src",
+    "beforeBuildCommand": "npm run build"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "macOSPrivateApi": true,
+    "windows": [
+      {
+        "title": "GTD Timer",
+        "width": 200,
+        "height": 200,
+        "resizable": true,
+        "fullscreen": false,
+        "alwaysOnTop": true,
+        "skipTaskbar": false,
+        "center": true,
+        "transparent": true,
+        "decorations": false
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ]
+  }
+}
