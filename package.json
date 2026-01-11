@@ -1,6 +1,6 @@
 {
   "name": "gtd-timer-app",
-  "version": "1.0.0",
+  "version": "0.2.0",
   "description": "Productivity timer app focused only for my own use",
   "main": "index.js",
   "scripts": {

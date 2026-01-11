@@ -54,6 +54,14 @@ npx tauri dev
 
 This launches the app in development mode with hot-reload capabilities and debug logging enabled.
 
+### Versioning
+
+The app version is tracked in three places. Keep them in sync when bumping versions:
+
+- `package.json` (`version`)
+- `src-tauri/Cargo.toml` (`package.version`)
+- `src-tauri/tauri.conf.json` (`version`)
+
 ### Project Structure
 
 ```
