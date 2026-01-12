@@ -114,12 +114,19 @@ jobs:
         if: matrix.os == 'windows-latest'
         shell: pwsh
         run: |
-          $bundleDir = "src-tauri/target/${{ matrix.target }}/release/bundle/app"
+          $releaseDir = "src-tauri/target/${{ matrix.target }}/release"
           $portableDir = "src-tauri/target/${{ matrix.target }}/release/bundle/portable"
           New-Item -ItemType Directory -Force -Path $portableDir | Out-Null
           $zipPath = "$portableDir/gtd-timer-app-${{ matrix.target }}-portable.zip"
           if (Test-Path $zipPath) { Remove-Item $zipPath }
-          Compress-Archive -Path "$bundleDir/*" -DestinationPath $zipPath
+          $exePath = Join-Path $releaseDir "gtd-timer-app.exe"
+          if (-not (Test-Path $exePath)) {
+            $exePath = Get-ChildItem -Path $releaseDir -Filter *.exe | Select-Object -First 1 | ForEach-Object { $_.FullName }
+          }
+          if (-not $exePath) {
+            throw "Portable packaging failed: no .exe found in $releaseDir"
+          }
+          Compress-Archive -Path $exePath -DestinationPath $zipPath
 
       - name: Upload portable build to release
         if: startsWith(github.ref, 'refs/tags/v') && matrix.os == 'windows-latest'
